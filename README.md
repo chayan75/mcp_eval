@@ -377,6 +377,31 @@ make run
 make compose-up
 ```
 
+### **AWS App Runner Deployment**
+```bash
+# 1. Prerequisites: AWS CLI configured, Docker installed
+aws configure
+
+# 2. Create IAM role for App Runner
+aws iam create-role --role-name AppRunnerInstanceRole --assume-role-policy-document file://trust-policy.json
+aws iam attach-role-policy --role-name AppRunnerInstanceRole --policy-arn arn:aws:iam::aws:policy/service-role/AppRunnerServicePolicyForECRAccess
+
+# 3. Set environment variable
+export INSTANCE_ROLE_ARN="arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):role/AppRunnerInstanceRole"
+
+# 4. Deploy to AWS App Runner
+make deploy-apprunner
+
+# 5. Set API keys in App Runner console (OPENAI_API_KEY, etc.)
+```
+
+**🌐 Deployed Endpoints:**
+- **REST API**: `https://your-app.runner-url.com/docs`
+- **MCP Wrapper**: `https://your-app.runner-url.com/mcp/`
+- **Health Check**: `https://your-app.runner-url.com/health`
+
+**📚 Detailed Guide**: See [AWS_APP_RUNNER_DEPLOYMENT.md](./AWS_APP_RUNNER_DEPLOYMENT.md) for complete deployment instructions.
+
 ### **Development Setup**
 ```bash
 # Install development dependencies
@@ -922,6 +947,7 @@ benchmarks:
 | **MCP Wrapper** | `make serve-wrapper` | Streamable HTTP (SSE) | 9001 | none | FastMCP wrapper around REST API |
 | **MCP Wrapper Public** | `make serve-wrapper-public` | Streamable HTTP (SSE) | 9001 | none | Public MCP wrapper access |
 | **Container** | `make run` | HTTP | 8080 | none | Docker deployment |
+| **AWS App Runner** | `make deploy-apprunner` | HTTP REST | 8080 | none | Cloud deployment on AWS |
 
 ### **Immediate Quick Start**
 
@@ -986,6 +1012,19 @@ make test-wrapper            # Test wrapper endpoints
 ```bash
 # Build and deploy
 make build && make run
+```
+
+#### **Option 6: AWS App Runner Deployment**
+```bash
+# 1. Set up AWS credentials and IAM role
+aws configure
+export INSTANCE_ROLE_ARN="arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):role/AppRunnerInstanceRole"
+
+# 2. Deploy to AWS App Runner
+make deploy-apprunner
+
+# 3. Test locally first (optional)
+make test-docker-apprunner
 ```
 
 ### **Integration Examples**

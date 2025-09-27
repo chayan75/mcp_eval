@@ -1,0 +1,39 @@
+version: 1.0
+runtime: docker
+build:
+  commands:
+    build:
+      - echo "Building MCP Evaluation Server for AWS App Runner..."
+      - echo "Using pre-built container image"
+run:
+  runtime-version: latest
+  command: python3 -m mcp_eval_server.rest_server --port 8080 --host 0.0.0.0
+  network:
+    port: 8080
+    env: PORT
+  env:
+    - name: PORT
+      value: "8080"
+    - name: MCP_PORT
+      value: "9001"
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: PYTHONDONTWRITEBYTECODE
+      value: "1"
+    - name: MCP_EVAL_CACHE_DIR
+      value: "/tmp/cache"
+    - name: MCP_EVAL_RESULTS_DB
+      value: "/tmp/results/evaluation_results.db"
+    - name: DEFAULT_JUDGE_MODEL
+      value: "gpt-4o-mini"
+    # API Keys will be provided via environment variables in App Runner console
+    - name: OPENAI_API_KEY
+      value: ""
+    - name: AZURE_OPENAI_ENDPOINT
+      value: ""
+    - name: AZURE_OPENAI_API_KEY
+      value: ""
+    - name: ANTHROPIC_API_KEY
+      value: ""
+    - name: OLLAMA_BASE_URL
+      value: ""

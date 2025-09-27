@@ -150,6 +150,43 @@ docs-serve: ## Serve documentation locally
 release: test lint build ## Run tests, lint, and build for release
 	@echo "Release build completed successfully"
 
+# AWS App Runner Deployment
+deploy-apprunner: ## Deploy to AWS App Runner (requires AWS CLI and Docker)
+	@echo "🚀 Deploying MCP Evaluation Server to AWS App Runner..."
+	@echo "📋 Prerequisites:"
+	@echo "   1. AWS CLI configured with appropriate permissions"
+	@echo "   2. Docker installed and running"
+	@echo "   3. INSTANCE_ROLE_ARN environment variable set"
+	@echo ""
+	@echo "💡 To set up IAM role:"
+	@echo "   aws iam create-role --role-name AppRunnerInstanceRole --assume-role-policy-document file://trust-policy.json"
+	@echo "   aws iam attach-role-policy --role-name AppRunnerInstanceRole --policy-arn arn:aws:iam::aws:policy/service-role/AppRunnerServicePolicyForECRAccess"
+	@echo ""
+	@echo "⚡ Starting deployment..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	INSTANCE_ROLE_ARN="$${INSTANCE_ROLE_ARN}" ./deploy-to-apprunner.sh
+
+build-docker-apprunner: ## Build Docker image for AWS App Runner
+	@echo "🐳 Building Docker image for AWS App Runner..."
+	docker build -f Dockerfile -t mcp-eval-server:apprunner .
+	@echo "✅ Docker image built: mcp-eval-server:apprunner"
+
+test-docker-apprunner: build-docker-apprunner ## Test Docker image locally
+	@echo "🧪 Testing Docker image locally..."
+	@echo "📡 Starting container on port 8080..."
+	@echo "🌐 REST API: http://localhost:8080/docs"
+	@echo "🔗 MCP Wrapper: http://localhost:8080/mcp/"
+	@echo "🏥 Health check: http://localhost:8080/health"
+	@echo ""
+	@echo "⚡ Starting container (Ctrl+C to stop)..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	docker run --rm -it -p 8080:8080 \
+		-e PYTHONUNBUFFERED=1 \
+		-e DEFAULT_JUDGE_MODEL=rule-based \
+		-e PORT=8080 \
+		-e MCP_PORT=9001 \
+		mcp-eval-server:apprunner
+
 # Check environment
 check-env: ## Check required environment variables
 	@echo "🔍 Checking environment configuration..."
