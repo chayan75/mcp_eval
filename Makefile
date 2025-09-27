@@ -7,6 +7,8 @@ IMAGE_NAME ?= mcp-eval-server
 IMAGE_TAG ?= latest
 CONTAINER_NAME ?= mcp-eval-server
 PYTHON ?= python3
+REST_API_BASE_URL ?= http://localhost:8080
+WRAPPER_PORT ?= 9001
 
 # Help target
 help: ## Show this help message
@@ -390,6 +392,47 @@ serve-dual: ## Start both MCP and REST servers (requires two terminals)
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	$(PYTHON) -m mcp_eval_server.rest_server --port $(REST_PORT) --host $(HTTP_HOST)
 
+# MCP Wrapper Server (FastMCP wrapper around REST API via SSE)
+serve-wrapper: ## Run MCP wrapper server using FastMCP with SSE (requires REST API running)
+	@echo "🚀 Starting MCP Evaluation Server Wrapper (SSE)..."
+	@echo "📡 Protocol: Model Context Protocol (MCP) via Server-Sent Events"
+	@echo "🔗 Wrapper: FastMCP around REST API"
+	@echo "🌐 URL: http://$(HTTP_HOST):$(WRAPPER_PORT)"
+	@echo "🌐 REST API URL: $(REST_API_BASE_URL)"
+	@echo ""
+	@echo "⚠️  Prerequisites:"
+	@echo "   1. Start REST API server first: make serve-rest"
+	@echo "   2. Ensure REST API is accessible at $(REST_API_BASE_URL)"
+	@echo ""
+	@echo "💡 How to connect:"
+	@echo "   • MCP Client (Claude Desktop, etc.):"
+	@echo "     - Server URL: http://$(HTTP_HOST):$(WRAPPER_PORT)/mcp/"
+	@echo "     - Protocol: Streamable HTTP (SSE)"
+	@echo "     - Headers: Accept: application/json, text/event-stream"
+	@echo "   • Custom REST API URL:"
+	@echo "     - make serve-wrapper REST_API_BASE_URL=http://localhost:3000"
+	@echo "   • Custom port:"
+	@echo "     - make serve-wrapper WRAPPER_PORT=9002"
+	@echo ""
+	@echo "⚡ Starting MCP wrapper server (Ctrl+C to stop)..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(PYTHON) -m mcp_eval_server.mcp_wrapper --rest-url $(REST_API_BASE_URL) --host $(HTTP_HOST) --port $(WRAPPER_PORT)
+
+serve-wrapper-public: ## Run MCP wrapper with public access
+	@echo "🌐 Starting MCP Evaluation Server Wrapper (Public SSE)..."
+	@echo "📡 Protocol: Model Context Protocol (MCP) via Server-Sent Events"
+	@echo "🔗 Wrapper: FastMCP around REST API"
+	@echo "🌐 URL: http://0.0.0.0:$(WRAPPER_PORT) (accessible from any IP)"
+	@echo "🌐 REST API URL: $(REST_API_BASE_URL)"
+	@echo ""
+	@echo "⚠️  Prerequisites:"
+	@echo "   1. Start REST API server first: make serve-rest-public"
+	@echo "   2. Ensure REST API is accessible at $(REST_API_BASE_URL)"
+	@echo ""
+	@echo "⚡ Starting MCP wrapper server (Ctrl+C to stop)..."
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	$(PYTHON) -m mcp_eval_server.mcp_wrapper --rest-url $(REST_API_BASE_URL) --host 0.0.0.0 --port $(WRAPPER_PORT)
+
 serve-http-public: ## Run HTTP server accessible from any IP
 	@echo "🌐 Starting MCP Evaluation Server as PUBLIC HTTP service..."
 	@echo "⚠️  WARNING: Server will be accessible from ANY IP address!"
@@ -472,6 +515,43 @@ test-all-apis: ## Test both HTTP and REST API endpoints
 	@$(MAKE) test-rest || true
 	@echo ""
 	@echo "✅ All API testing complete!"
+
+test-wrapper: ## Test MCP wrapper server functionality (requires REST API running)
+	@echo "🧪 Testing MCP wrapper server (SSE)..."
+	@echo "📡 Protocol: MCP via Server-Sent Events (FastMCP wrapper)"
+	@echo "🌐 URL: http://$(HTTP_HOST):$(WRAPPER_PORT)"
+	@echo "🔗 REST API URL: $(REST_API_BASE_URL)"
+	@echo ""
+	@echo "⚠️  Prerequisites:"
+	@echo "   1. Start REST API server: make serve-rest"
+	@echo "   2. Start MCP wrapper: make serve-wrapper"
+	@echo "   3. Ensure both servers are running"
+	@echo ""
+	@echo "1️⃣  Testing server info..."
+	@curl -s -X POST \
+	      -H "Content-Type: application/json" \
+	      -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_server_info", "arguments": {}}}' \
+	      "http://$(HTTP_HOST):$(WRAPPER_PORT)/" | head -10 || echo "❌ Server info failed"
+	@echo ""
+	@echo "2️⃣  Testing health check..."
+	@curl -s -X POST \
+	      -H "Content-Type: application/json" \
+	      -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "get_health_status", "arguments": {}}}' \
+	      "http://$(HTTP_HOST):$(WRAPPER_PORT)/" | head -10 || echo "❌ Health check failed"
+	@echo ""
+	@echo "3️⃣  Testing tool categories..."
+	@curl -s -X POST \
+	      -H "Content-Type: application/json" \
+	      -d '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_tool_categories", "arguments": {}}}' \
+	      "http://$(HTTP_HOST):$(WRAPPER_PORT)/" | head -10 || echo "❌ Tool categories failed"
+	@echo ""
+	@echo "4️⃣  Testing judge evaluation..."
+	@curl -s -X POST \
+	      -H "Content-Type: application/json" \
+	      -d '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "judge_evaluate", "arguments": {"response": "Paris is the capital of France.", "criteria": [{"name": "accuracy", "description": "Factual accuracy", "scale": "1-5", "weight": 1.0}], "rubric": {"criteria": [], "scale_description": {"1": "Wrong", "5": "Correct"}}, "judge_model": "rule-based"}}}' \
+	      "http://$(HTTP_HOST):$(WRAPPER_PORT)/" | head -10 || echo "❌ Judge evaluation failed"
+	@echo ""
+	@echo "✅ MCP wrapper testing complete!"
 
 generate-token: ## Generate a secure bearer token
 	@echo "🔐 Generating secure bearer token..."

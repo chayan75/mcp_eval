@@ -81,6 +81,23 @@ curl -X POST -H 'Content-Type: application/json' \
      http://localhost:9000/
 ```
 
+#### **🚀 MCP Wrapper Mode (FastMCP + REST API)**
+```bash
+# 🎯 Start REST API server first
+make serve-rest
+
+# 🔗 Launch MCP wrapper (FastMCP around REST API)
+make serve-wrapper
+
+# 📡 Access via MCP protocol over HTTP/SSE on port 9001
+# Endpoint: http://localhost:9001/mcp/
+# Headers: Accept: application/json, text/event-stream
+# Protocol: Streamable HTTP (SSE) with session management
+
+# 🧪 Test the wrapper
+python test_sse_client.py
+```
+
 
 ## ✨ **Complete Tool Arsenal**
 
@@ -207,6 +224,50 @@ curl -X POST -H 'Content-Type: application/json' \
 - **Comparative Analysis**: A/B testing capabilities with regression detection
 - **Predictive Analytics**: Performance trend forecasting and anomaly detection
 
+## 🚀 **MCP Wrapper (FastMCP + REST API)**
+
+### **🎯 What is the MCP Wrapper?**
+The MCP Wrapper is a **FastMCP-based server** that wraps your existing REST API and exposes it as a **Model Context Protocol (MCP) server**. This allows MCP clients (like Claude Desktop) to access all your evaluation tools through the MCP protocol while keeping your REST API unchanged.
+
+### **✨ Key Benefits**
+- **🔄 Dual Protocol Support**: Access the same tools via both REST API and MCP protocol
+- **🌐 HTTP/SSE Transport**: Modern streamable HTTP with Server-Sent Events
+- **🔗 REST API Integration**: Seamlessly wraps existing REST endpoints
+- **📡 Session Management**: Automatic session handling with `mcp-session-id` headers
+- **⚡ Real-time Communication**: Bidirectional communication over single HTTP connection
+- **🛡️ Protocol Compliance**: Full MCP protocol compliance with proper initialization
+
+### **🏗️ Architecture**
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   MCP Client    │    │   MCP Wrapper    │    │   REST API      │
+│ (Claude Desktop)│◄──►│  (FastMCP + SSE) │◄──►│  (FastAPI)      │
+│                 │    │                  │    │                 │
+│ • stdio         │    │ • /mcp/ endpoint │    │ • /judge/*      │
+│ • HTTP/SSE      │    │ • Session mgmt   │    │ • /quality/*    │
+│ • JSON-RPC      │    │ • Tool wrapping  │    │ • /agent/*      │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+### **🔧 Technical Details**
+- **Transport**: Streamable HTTP (SSE) with session management
+- **Endpoint**: `http://localhost:9001/mcp/`
+- **Headers**: `Accept: application/json, text/event-stream`
+- **Session**: Automatic via `mcp-session-id` header
+- **Protocol**: Full MCP protocol with initialization and notifications
+- **Tools**: All 63 evaluation tools exposed as MCP tools
+
+### **🎮 Usage Examples**
+```bash
+# Start both servers
+make serve-rest      # REST API on port 8080
+make serve-wrapper   # MCP wrapper on port 9001
+
+# Test the wrapper
+python test_sse_client.py
+make test-wrapper
+```
+
 ## 🛠️ **Installation & Setup**
 
 ### **Quick Installation**
@@ -229,6 +290,8 @@ export HEALTH_CHECK_HOST=0.0.0.0     # Default: 0.0.0.0
 ```
 
 ### **MCP Client Connection**
+
+#### **Option 1: Direct MCP Server (stdio)**
 ```json
 {
   "command": "python",
@@ -237,9 +300,24 @@ export HEALTH_CHECK_HOST=0.0.0.0     # Default: 0.0.0.0
 }
 ```
 
-**Protocol**: stdio (Model Context Protocol)
-**Transport**: Standard input/output (no HTTP port needed)
+**Protocol**: stdio (Model Context Protocol)  
+**Transport**: Standard input/output (no HTTP port needed)  
 **Tools Available**: 63 specialized evaluation tools
+
+#### **Option 2: MCP Wrapper (HTTP/SSE)**
+```json
+{
+  "url": "http://localhost:9001/mcp/",
+  "headers": {
+    "Accept": "application/json, text/event-stream"
+  }
+}
+```
+
+**Protocol**: Streamable HTTP (SSE)  
+**Transport**: HTTP with Server-Sent Events  
+**Session Management**: Automatic via `mcp-session-id` header  
+**Tools Available**: 63 specialized evaluation tools (via REST API wrapper)
 
 ### **Health Check Endpoints**
 
@@ -841,6 +919,8 @@ benchmarks:
 | **REST Public** | `make serve-rest-public` | HTTP REST | 8080 | none | Public REST API access |
 | **HTTP Bridge** | `make serve-http` | JSON-RPC/HTTP | 9000 | none | MCP over HTTP, local testing |
 | **HTTP Public** | `make serve-http-public` | JSON-RPC/HTTP | 9000 | none | MCP over HTTP, remote access |
+| **MCP Wrapper** | `make serve-wrapper` | Streamable HTTP (SSE) | 9001 | none | FastMCP wrapper around REST API |
+| **MCP Wrapper Public** | `make serve-wrapper-public` | Streamable HTTP (SSE) | 9001 | none | Public MCP wrapper access |
 | **Container** | `make run` | HTTP | 8080 | none | Docker deployment |
 
 ### **Immediate Quick Start**
@@ -883,7 +963,26 @@ make test-http           # Test MCP JSON-RPC endpoints
 make http-info           # Show complete HTTP bridge guide
 ```
 
-#### **Option 4: Docker Deployment**
+#### **Option 4: MCP Wrapper (FastMCP + REST API)**
+```bash
+# 1. Start REST API server first
+make serve-rest          # Starts on http://localhost:8080
+
+# 2. Start MCP wrapper (FastMCP around REST API)
+make serve-wrapper       # Starts on http://localhost:9001
+
+# 3. Test wrapper functionality
+python test_sse_client.py    # Test SSE client
+make test-wrapper            # Test wrapper endpoints
+
+# 4. Connection details
+# Endpoint: http://localhost:9001/mcp/
+# Protocol: Streamable HTTP (SSE)
+# Headers: Accept: application/json, text/event-stream
+# Session management: Automatic via mcp-session-id header
+```
+
+#### **Option 5: Docker Deployment**
 ```bash
 # Build and deploy
 make build && make run
@@ -966,6 +1065,52 @@ curl -X POST \
        }
      }' \
      http://localhost:9000/
+```
+
+#### **MCP Wrapper Integration (FastMCP + REST API)**
+```bash
+# Start REST API server first
+make serve-rest
+
+# Start MCP wrapper
+make serve-wrapper
+
+# Initialize MCP session
+curl -X POST -H "Content-Type: application/json" \
+     -H "Accept: application/json, text/event-stream" \
+     -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}' \
+     http://localhost:9001/mcp/
+
+# Send initialized notification (note: returns 202 for notifications)
+curl -X POST -H "Content-Type: application/json" \
+     -H "Accept: application/json, text/event-stream" \
+     -d '{"jsonrpc": "2.0", "method": "notifications/initialized"}' \
+     http://localhost:9001/mcp/
+
+# List available tools via MCP wrapper
+curl -X POST -H "Content-Type: application/json" \
+     -H "Accept: application/json, text/event-stream" \
+     -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}' \
+     http://localhost:9001/mcp/
+
+# Evaluate response via MCP wrapper
+curl -X POST -H "Content-Type: application/json" \
+     -H "Accept: application/json, text/event-stream" \
+     -d '{
+       "jsonrpc": "2.0",
+       "id": 3,
+       "method": "tools/call",
+       "params": {
+         "name": "judge_evaluate",
+         "arguments": {
+           "response": "Paris is the capital of France.",
+           "criteria": [{"name": "accuracy", "description": "Factual accuracy", "scale": "1-5", "weight": 1.0}],
+           "rubric": {"criteria": [], "scale_description": {"1": "Wrong", "5": "Correct"}},
+           "judge_model": "rule-based"
+         }
+       }
+     }' \
+     http://localhost:9001/mcp/
 ```
 
 #### **Python REST API Client Integration**
@@ -1060,4 +1205,112 @@ async def evaluate_via_http_bridge():
 
 # Run evaluation
 asyncio.run(evaluate_via_http_bridge())
+```
+
+#### **Python MCP Wrapper Client Integration**
+```python
+import httpx
+import asyncio
+import json
+import re
+
+class MCPWrapperClient:
+    """Client for MCP wrapper with SSE support."""
+    
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.session_id = None
+        self.client = httpx.AsyncClient()
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
+    
+    async def send_request(self, request: dict) -> dict:
+        """Send a JSON-RPC request and parse SSE response."""
+        headers = {"Accept": "application/json, text/event-stream"}
+        if self.session_id:
+            headers["mcp-session-id"] = self.session_id
+        
+        response = await self.client.post(
+            self.base_url,
+            json=request,
+            headers=headers,
+            timeout=30.0
+        )
+        
+        if response.status_code not in [200, 202]:
+            raise Exception(f"HTTP {response.status_code}: {response.text}")
+        
+        # Extract session ID from response headers
+        if "mcp-session-id" in response.headers:
+            self.session_id = response.headers["mcp-session-id"]
+        
+        # For notifications (202), return empty result
+        if response.status_code == 202:
+            return {}
+        
+        # Parse SSE response
+        content = response.text
+        data_match = re.search(r'data:\s*(\{.*\})', content)
+        if data_match:
+            json_str = data_match.group(1)
+            return json.loads(json_str)
+        else:
+            raise Exception(f"Could not parse SSE response: {content}")
+
+async def evaluate_via_mcp_wrapper():
+    """Example using MCP wrapper with SSE."""
+    async with MCPWrapperClient("http://localhost:9001/mcp/") as client:
+        # Initialize MCP session
+        init_request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "test-client", "version": "1.0.0"}
+            }
+        }
+        
+        result = await client.send_request(init_request)
+        print(f"Initialized: {result.get('result', {}).get('serverInfo', {}).get('name', 'Unknown')}")
+        
+        # Send initialized notification
+        await client.send_request({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        
+        # List tools
+        tools_request = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+        result = await client.send_request(tools_request)
+        tools = result.get('result', {}).get('tools', [])
+        print(f"Available tools: {len(tools)}")
+        
+        # Evaluate response
+        eval_request = {
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "tools/call",
+            "params": {
+                "name": "judge_evaluate",
+                "arguments": {
+                    "response": "Paris is the capital of France.",
+                    "criteria": [{"name": "accuracy", "description": "Factual accuracy", "scale": "1-5", "weight": 1.0}],
+                    "rubric": {"criteria": [], "scale_description": {"1": "Wrong", "5": "Correct"}},
+                    "judge_model": "rule-based"
+                }
+            }
+        }
+        
+        result = await client.send_request(eval_request)
+        if 'result' in result:
+            tool_result = result['result']
+            print(f"Evaluation successful: {tool_result}")
+        else:
+            print(f"Evaluation failed: {result}")
+
+# Run evaluation
+asyncio.run(evaluate_via_mcp_wrapper())
 ```
