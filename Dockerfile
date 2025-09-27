@@ -1,5 +1,5 @@
 # AWS App Runner Dockerfile for MCP Evaluation Server
-FROM python:3.11-slim
+FROM --platform=linux/amd64 python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -29,26 +29,15 @@ COPY startup_proxy.py ./
 # Create directories for data
 RUN mkdir -p /app/data/cache /app/data/results
 
-# Create startup script
-RUN echo '#!/bin/bash' > /app/start.sh && \
-    echo 'set -euo pipefail' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo 'echo "🚀 Starting MCP Evaluation Server on AWS App Runner..."' >> /app/start.sh && \
-    echo 'echo "📡 Protocols: HTTP REST API + MCP Wrapper (SSE) via Proxy"' >> /app/start.sh && \
-    echo 'echo "🌍 Port: ${PORT:-8080}"' >> /app/start.sh && \
-    echo 'echo "🔗 Host: 0.0.0.0"' >> /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo '# Start the proxy server (which manages both REST API and MCP wrapper)' >> /app/start.sh && \
-    echo 'exec python3 startup_proxy.py' >> /app/start.sh
-
-RUN chmod +x /app/start.sh
+# Make startup script executable
+RUN chmod +x /app/startup_proxy.py
 
 # Expose ports
-EXPOSE 8080 9001
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
 # Run the application
-CMD ["/app/start.sh"]
+CMD ["python3", "/app/startup_proxy.py"]

@@ -2,51 +2,7 @@
     "ServiceName": "mcp-eval-server",
     "SourceConfiguration": {
         "ImageRepository": {
-            "ImageIdentifier": "[0;34m[INFO][0m Building and pushing Docker image to ECR...
-[0;34m[INFO][0m ECR Registry: 682033472096.dkr.ecr.us-east-1.amazonaws.com
-[0;34m[INFO][0m Image URI: 682033472096.dkr.ecr.us-east-1.amazonaws.com/mcp-eval-server:latest
-[0;34m[INFO][0m Logging in to ECR...
-Login Succeeded
-[0;34m[INFO][0m Building Docker image...
-[0;34m[INFO][0m Pushing image to ECR...
-The push refers to repository [682033472096.dkr.ecr.us-east-1.amazonaws.com/mcp-eval-server]
-87af5014edca: Preparing
-5522a45cffe0: Preparing
-c8e090305ab5: Preparing
-b755eddc631e: Preparing
-984539c24fc5: Preparing
-ddd0a145d4b8: Preparing
-35476f7d1f73: Preparing
-a05e9a554cae: Preparing
-933af2480d9e: Preparing
-57d4d4281ed9: Preparing
-5c3a9d503183: Preparing
-6ef8942dbcec: Preparing
-14b82c37a96e: Preparing
-a05e9a554cae: Waiting
-933af2480d9e: Waiting
-57d4d4281ed9: Waiting
-35476f7d1f73: Waiting
-5c3a9d503183: Waiting
-6ef8942dbcec: Waiting
-14b82c37a96e: Waiting
-ddd0a145d4b8: Waiting
-87af5014edca: Pushed
-c8e090305ab5: Pushed
-b755eddc631e: Pushed
-5522a45cffe0: Pushed
-984539c24fc5: Pushed
-35476f7d1f73: Pushed
-a05e9a554cae: Pushed
-57d4d4281ed9: Pushed
-6ef8942dbcec: Pushed
-5c3a9d503183: Pushed
-14b82c37a96e: Pushed
-933af2480d9e: Pushed
-ddd0a145d4b8: Pushed
-latest: digest: sha256:59a133a6641c9c6997bac45e5b06b0c8cecce99767f95a47f5d69e6f69edeb7e size: 3038
-[0;32m[SUCCESS][0m Image pushed successfully: 682033472096.dkr.ecr.us-east-1.amazonaws.com/mcp-eval-server:latest
-682033472096.dkr.ecr.us-east-1.amazonaws.com/mcp-eval-server:latest",
+            "ImageIdentifier": "682033472096.dkr.ecr.us-east-1.amazonaws.com/mcp-eval-server:latest",
             "ImageConfiguration": {
                 "Port": "8080",
                 "RuntimeEnvironmentVariables": {
@@ -61,6 +17,9 @@ latest: digest: sha256:59a133a6641c9c6997bac45e5b06b0c8cecce99767f95a47f5d69e6f6
             },
             "ImageRepositoryType": "ECR"
         },
+        "AuthenticationConfiguration": {
+            "AccessRoleArn": "arn:aws:iam::682033472096:role/AppRunnerServiceRole"
+        },
         "AutoDeploymentsEnabled": true
     },
     "InstanceConfiguration": {
@@ -71,7 +30,7 @@ latest: digest: sha256:59a133a6641c9c6997bac45e5b06b0c8cecce99767f95a47f5d69e6f6
     "HealthCheckConfiguration": {
         "Protocol": "HTTP",
         "Path": "/health",
-        "Interval": 30,
+        "Interval": 10,
         "Timeout": 10,
         "HealthyThreshold": 1,
         "UnhealthyThreshold": 5

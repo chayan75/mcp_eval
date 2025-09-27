@@ -53,7 +53,7 @@ check_prerequisites() {
 
 # Build and push Docker image to ECR
 build_and_push_image() {
-    print_status "Building and pushing Docker image to ECR..."
+    print_status "Building and pushing Docker image to ECR..." >&2
     
     # Get AWS account ID
     ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -62,37 +62,40 @@ build_and_push_image() {
     IMAGE_TAG="latest"
     FULL_IMAGE_URI="${ECR_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
     
-    print_status "ECR Registry: ${ECR_REGISTRY}"
-    print_status "Image URI: ${FULL_IMAGE_URI}"
+    print_status "ECR Registry: ${ECR_REGISTRY}" >&2
+    print_status "Image URI: ${FULL_IMAGE_URI}" >&2
     
     # Create ECR repository if it doesn't exist
     if ! aws ecr describe-repositories --repository-names "${IMAGE_NAME}" --region "${REGION}" &> /dev/null; then
-        print_status "Creating ECR repository: ${IMAGE_NAME}"
-        aws ecr create-repository --repository-name "${IMAGE_NAME}" --region "${REGION}"
+        print_status "Creating ECR repository: ${IMAGE_NAME}" >&2
+        aws ecr create-repository --repository-name "${IMAGE_NAME}" --region "${REGION}" >&2
     fi
     
     # Login to ECR
-    print_status "Logging in to ECR..."
-    aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+    print_status "Logging in to ECR..." >&2
+    aws ecr get-login-password --region "${REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}" >&2
     
     # Build Docker image
-    print_status "Building Docker image..."
-    docker build -t "${IMAGE_NAME}" .
+    print_status "Building Docker image..." >&2
+    docker build -t "${IMAGE_NAME}" . >&2
     
     # Tag image for ECR
     docker tag "${IMAGE_NAME}:latest" "${FULL_IMAGE_URI}"
     
     # Push image to ECR
-    print_status "Pushing image to ECR..."
-    docker push "${FULL_IMAGE_URI}"
+    print_status "Pushing image to ECR..." >&2
+    docker push "${FULL_IMAGE_URI}" >&2
     
-    print_success "Image pushed successfully: ${FULL_IMAGE_URI}"
+    print_success "Image pushed successfully: ${FULL_IMAGE_URI}" >&2
     echo "${FULL_IMAGE_URI}"
 }
 
 # Create App Runner service
 create_app_runner_service() {
     local image_uri="$1"
+    
+    # Get AWS account ID
+    local ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
     
     print_status "Creating App Runner service..."
     
@@ -117,6 +120,9 @@ create_app_runner_service() {
             },
             "ImageRepositoryType": "ECR"
         },
+        "AuthenticationConfiguration": {
+            "AccessRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/AppRunnerServiceRole"
+        },
         "AutoDeploymentsEnabled": true
     },
     "InstanceConfiguration": {
@@ -127,7 +133,7 @@ create_app_runner_service() {
     "HealthCheckConfiguration": {
         "Protocol": "HTTP",
         "Path": "/health",
-        "Interval": 30,
+        "Interval": 10,
         "Timeout": 10,
         "HealthyThreshold": 1,
         "UnhealthyThreshold": 5

@@ -24,15 +24,16 @@ logger = logging.getLogger(__name__)
 
 class MCPEvaluationServer:
     def __init__(self):
-        self.rest_port = int(os.getenv("PORT", "8080"))
-        self.mcp_port = int(os.getenv("MCP_PORT", "9001"))
+        self.external_port = int(os.getenv("PORT", "8080"))  # External port (App Runner)
+        self.rest_port = 8081  # Internal REST API port
+        self.mcp_port = 8082   # Internal MCP wrapper port
         self.rest_process: Optional[subprocess.Popen] = None
         self.mcp_process: Optional[subprocess.Popen] = None
         self.proxy_app = FastAPI(title="MCP Evaluation Server Proxy")
         self.setup_proxy_routes()
         
     def setup_proxy_routes(self):
-        """Setup proxy routes for both REST API and MCP wrapper"""
+        """Setup proxy routes for MCP wrapper only"""
         
         @self.proxy_app.get("/")
         async def root():
@@ -40,12 +41,9 @@ class MCPEvaluationServer:
                 "service": "MCP Evaluation Server",
                 "version": "0.1.0",
                 "endpoints": {
-                    "rest_api": f"http://localhost:{self.rest_port}",
-                    "mcp_wrapper": f"http://localhost:{self.mcp_port}/mcp/",
-                    "docs": f"http://localhost:{self.rest_port}/docs",
-                    "health": f"http://localhost:{self.rest_port}/health"
+                    "mcp_wrapper": f"http://localhost:{self.external_port}/mcp"
                 },
-                "protocols": ["HTTP REST API", "MCP over HTTP/SSE"]
+                "protocols": ["MCP over HTTP/SSE"]
             }
         
         @self.proxy_app.get("/health")
@@ -59,9 +57,34 @@ class MCPEvaluationServer:
                 logger.error(f"Health check failed: {e}")
                 return {"status": "unhealthy", "error": str(e)}
         
+        @self.proxy_app.api_route("/mcp", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+        async def mcp_proxy_root(request: Request):
+            """Proxy MCP wrapper requests to root"""
+            try:
+                url = f"http://localhost:{self.mcp_port}/mcp"
+                async with httpx.AsyncClient() as client:
+                    response = await client.request(
+                        method=request.method,
+                        url=url,
+                        headers=dict(request.headers),
+                        content=await request.body(),
+                        timeout=30.0
+                    )
+                    return Response(
+                        content=response.content,
+                        status_code=response.status_code,
+                        headers=dict(response.headers)
+                    )
+            except Exception as e:
+                logger.error(f"MCP proxy error: {e}")
+                return Response(
+                    content=f"Proxy error: {str(e)}",
+                    status_code=500
+                )
+
         @self.proxy_app.api_route("/mcp/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
         async def mcp_proxy(request: Request, path: str):
-            """Proxy MCP wrapper requests"""
+            """Proxy MCP wrapper requests with path"""
             try:
                 url = f"http://localhost:{self.mcp_port}/mcp/{path}"
                 async with httpx.AsyncClient() as client:
@@ -84,30 +107,6 @@ class MCPEvaluationServer:
                     status_code=500
                 )
         
-        @self.proxy_app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-        async def rest_proxy(request: Request, path: str):
-            """Proxy REST API requests"""
-            try:
-                url = f"http://localhost:{self.rest_port}/{path}"
-                async with httpx.AsyncClient() as client:
-                    response = await client.request(
-                        method=request.method,
-                        url=url,
-                        headers=dict(request.headers),
-                        content=await request.body(),
-                        timeout=30.0
-                    )
-                    return Response(
-                        content=response.content,
-                        status_code=response.status_code,
-                        headers=dict(response.headers)
-                    )
-            except Exception as e:
-                logger.error(f"REST proxy error: {e}")
-                return Response(
-                    content=f"Proxy error: {str(e)}",
-                    status_code=500
-                )
     
     def start_rest_api(self):
         """Start the REST API server"""
@@ -146,10 +145,10 @@ class MCPEvaluationServer:
     def run(self):
         """Run the proxy server"""
         logger.info("🚀 Starting MCP Evaluation Server on AWS App Runner...")
-        logger.info(f"📡 Protocols: HTTP REST API + MCP Wrapper (SSE)")
-        logger.info(f"🌍 REST API Port: {self.rest_port}")
-        logger.info(f"🌍 MCP Wrapper Port: {self.mcp_port}")
-        logger.info(f"🔗 Proxy Port: {self.rest_port}")
+        logger.info(f"📡 Protocol: MCP Wrapper (SSE) only")
+        logger.info(f"🌍 REST API Port: {self.rest_port} (internal only)")
+        logger.info(f"🌍 MCP Wrapper Port: {self.mcp_port} (internal)")
+        logger.info(f"🔗 External Port: {self.external_port} (MCP only)")
         
         # Log available judges
         try:
@@ -176,16 +175,16 @@ class MCPEvaluationServer:
         self.start_mcp_wrapper()
         
         logger.info("🎉 Both servers are running!")
-        logger.info(f"📚 REST API: http://0.0.0.0:{self.rest_port}/docs")
-        logger.info(f"🔗 MCP Wrapper: http://0.0.0.0:{self.rest_port}/mcp/")
-        logger.info(f"🏥 Health Check: http://0.0.0.0:{self.rest_port}/health")
+        logger.info(f"🔗 MCP Wrapper: http://0.0.0.0:{self.external_port}/mcp")
+        logger.info(f"🏥 Health Check: http://0.0.0.0:{self.external_port}/health")
+        logger.info(f"📚 REST API: http://localhost:{self.rest_port}/docs (internal only)")
         
         # Start the proxy server
         try:
             uvicorn.run(
                 self.proxy_app,
                 host="0.0.0.0",
-                port=self.rest_port,
+                port=self.external_port,
                 log_level="info"
             )
         except KeyboardInterrupt:

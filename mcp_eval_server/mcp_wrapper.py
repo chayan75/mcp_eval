@@ -91,7 +91,7 @@ rest_client = RESTAPIClient()
 @mcp.tool()
 async def get_server_info() -> str:
     """Get server information and status."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         result = await client.get("/")
         return json.dumps(result, indent=2)
 
@@ -99,7 +99,7 @@ async def get_server_info() -> str:
 @mcp.tool()
 async def get_health_status() -> str:
     """Get health check status."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         result = await client.get("/health")
         return json.dumps(result, indent=2)
 
@@ -107,7 +107,7 @@ async def get_health_status() -> str:
 @mcp.tool()
 async def get_tool_categories() -> str:
     """Get list of available tool categories."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         result = await client.get("/tools/categories")
         return json.dumps(result, indent=2)
 
@@ -115,7 +115,7 @@ async def get_tool_categories() -> str:
 @mcp.tool()
 async def get_all_tools() -> str:
     """Get detailed information about all available tools."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         result = await client.get("/tools")
         return json.dumps(result, indent=2)
 
@@ -131,7 +131,7 @@ async def judge_evaluate(
     use_cot: bool = True
 ) -> str:
     """Evaluate a single response using LLM-as-a-judge."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "response": response,
             "criteria": criteria,
@@ -154,7 +154,7 @@ async def judge_compare(
     position_bias_mitigation: bool = True
 ) -> str:
     """Compare two responses using LLM-as-a-judge."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "response_a": response_a,
             "response_b": response_b,
@@ -176,7 +176,7 @@ async def judge_rank(
     ranking_method: str = "tournament"
 ) -> str:
     """Rank multiple responses using LLM-as-a-judge."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "responses": responses,
             "criteria": criteria,
@@ -197,7 +197,7 @@ async def judge_reference(
     tolerance: str = "moderate"
 ) -> str:
     """Evaluate response against gold standard reference."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "response": response,
             "reference": reference,
@@ -219,7 +219,7 @@ async def quality_factuality(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Check factual accuracy of responses."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "response": response,
             "knowledge_base": knowledge_base,
@@ -242,7 +242,7 @@ async def quality_coherence(
     if coherence_dimensions is None:
         coherence_dimensions = ["logical_flow", "consistency", "topic_transitions"]
     
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "text": text,
             "context": context,
@@ -264,7 +264,7 @@ async def quality_toxicity(
     if toxicity_categories is None:
         toxicity_categories = ["profanity", "hate_speech", "threats", "discrimination"]
     
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "content": content,
             "toxicity_categories": toxicity_categories,
@@ -284,7 +284,7 @@ async def prompt_clarity(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Assess prompt clarity."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "prompt_text": prompt_text,
             "target_model": target_model,
@@ -307,7 +307,7 @@ async def prompt_consistency(
     if temperature_range is None:
         temperature_range = [0.1, 0.5, 0.9]
     
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "prompt": prompt,
             "test_inputs": test_inputs,
@@ -327,7 +327,7 @@ async def prompt_completeness(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Measure prompt completeness."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "prompt": prompt,
             "expected_components": expected_components,
@@ -347,7 +347,7 @@ async def prompt_relevance(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Assess prompt relevance."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "prompt": prompt,
             "outputs": outputs,
@@ -369,7 +369,7 @@ async def agent_tool_use(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Evaluate agent tool usage."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "agent_trace": agent_trace,
             "expected_tools": expected_tools,
@@ -390,7 +390,7 @@ async def agent_task_completion(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Evaluate agent task completion."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "task_description": task_description,
             "success_criteria": success_criteria,
@@ -411,7 +411,7 @@ async def agent_reasoning(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Analyze agent reasoning quality."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "reasoning_trace": reasoning_trace,
             "decision_points": decision_points,
@@ -434,7 +434,7 @@ async def agent_benchmark(
     if metrics_focus is None:
         metrics_focus = ["accuracy", "efficiency", "reliability"]
     
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "benchmark_suite": benchmark_suite,
             "agent_config": agent_config,
@@ -456,7 +456,7 @@ async def rag_retrieval_relevance(
     use_llm_judge: bool = True
 ) -> str:
     """Evaluate RAG retrieval relevance."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "query": query,
             "retrieved_documents": retrieved_documents,
@@ -478,7 +478,7 @@ async def rag_context_utilization(
     judge_model: str = "gpt-4o-mini"
 ) -> str:
     """Evaluate RAG context utilization."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "query": query,
             "retrieved_context": retrieved_context,
@@ -499,7 +499,7 @@ async def rag_answer_groundedness(
     strictness: str = "moderate"
 ) -> str:
     """Evaluate RAG answer groundedness."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "question": question,
             "answer": answer,
@@ -519,7 +519,7 @@ async def rag_hallucination_detection(
     detection_threshold: float = 0.8
 ) -> str:
     """Detect hallucinations in RAG responses."""
-    async with RESTAPIClient() as client:
+    async with RESTAPIClient(REST_API_BASE_URL) as client:
         data = {
             "generated_text": generated_text,
             "source_context": source_context,

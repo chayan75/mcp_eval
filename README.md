@@ -90,12 +90,29 @@ make serve-rest
 make serve-wrapper
 
 # 📡 Access via MCP protocol over HTTP/SSE on port 9001
-# Endpoint: http://localhost:9001/mcp/
+# Endpoint: http://localhost:9001/mcp
 # Headers: Accept: application/json, text/event-stream
 # Protocol: Streamable HTTP (SSE) with session management
 
 # 🧪 Test the wrapper
 python test_sse_client.py
+```
+
+#### **☁️ AWS App Runner Deployment (Live)**
+```bash
+# 🚀 Deploy to AWS App Runner
+make deploy-apprunner
+
+# 🌐 Access deployed MCP wrapper
+# URL: https://6xaate4xrt.us-east-1.awsapprunner.com/mcp
+# Protocol: Streamable HTTP (SSE)
+# Headers: Accept: application/json, text/event-stream
+
+# 🧪 Test deployed wrapper
+curl -X POST "https://6xaate4xrt.us-east-1.awsapprunner.com/mcp" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}'
 ```
 
 
@@ -395,12 +412,99 @@ make deploy-apprunner
 # 5. Set API keys in App Runner console (OPENAI_API_KEY, etc.)
 ```
 
-**🌐 Deployed Endpoints:**
-- **REST API**: `https://your-app.runner-url.com/docs`
-- **MCP Wrapper**: `https://your-app.runner-url.com/mcp/`
-- **Health Check**: `https://your-app.runner-url.com/health`
+**🌐 Live Deployed Endpoints:**
+- **MCP Wrapper**: `https://6xaate4xrt.us-east-1.awsapprunner.com/mcp`
+- **Health Check**: `https://6xaate4xrt.us-east-1.awsapprunner.com/health`
+- **Service Info**: `https://6xaate4xrt.us-east-1.awsapprunner.com/`
 
 **📚 Detailed Guide**: See [AWS_APP_RUNNER_DEPLOYMENT.md](./AWS_APP_RUNNER_DEPLOYMENT.md) for complete deployment instructions.
+
+### **🎉 Live MCP Wrapper Testing**
+
+The MCP wrapper is now live and fully functional! Here's how to test it:
+
+#### **1. Initialize MCP Session**
+```bash
+curl -X POST "https://6xaate4xrt.us-east-1.awsapprunner.com/mcp" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -i \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {},
+      "clientInfo": {
+        "name": "test-client",
+        "version": "1.0.0"
+      }
+    }
+  }'
+```
+
+#### **2. Send Initialized Notification**
+```bash
+# Use the session ID from Step 1
+curl -X POST "https://6xaate4xrt.us-east-1.awsapprunner.com/mcp" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "mcp-session-id: <SESSION_ID>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "notifications/initialized"
+  }'
+```
+
+#### **3. List Available Tools**
+```bash
+curl -X POST "https://6xaate4xrt.us-east-1.awsapprunner.com/mcp" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "mcp-session-id: <SESSION_ID>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }'
+```
+
+#### **4. Call a Tool**
+```bash
+curl -X POST "https://6xaate4xrt.us-east-1.awsapprunner.com/mcp" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -H "mcp-session-id: <SESSION_ID>" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "judge_evaluate",
+      "arguments": {
+        "response": "Paris is the capital of France.",
+        "criteria": [
+          {
+            "name": "accuracy",
+            "description": "Factual accuracy",
+            "scale": "1-5",
+            "weight": 1.0
+          }
+        ],
+        "rubric": {
+          "criteria": [],
+          "scale_description": {
+            "1": "Wrong",
+            "5": "Correct"
+          }
+        },
+        "judge_model": "rule-based"
+      }
+    }
+  }'
+```
 
 ### **Development Setup**
 ```bash
@@ -947,7 +1051,7 @@ benchmarks:
 | **MCP Wrapper** | `make serve-wrapper` | Streamable HTTP (SSE) | 9001 | none | FastMCP wrapper around REST API |
 | **MCP Wrapper Public** | `make serve-wrapper-public` | Streamable HTTP (SSE) | 9001 | none | Public MCP wrapper access |
 | **Container** | `make run` | HTTP | 8080 | none | Docker deployment |
-| **AWS App Runner** | `make deploy-apprunner` | HTTP REST | 8080 | none | Cloud deployment on AWS |
+| **AWS App Runner** | `make deploy-apprunner` | MCP Wrapper (SSE) | 8080 | none | Cloud deployment on AWS (Live) |
 
 ### **Immediate Quick Start**
 
@@ -1118,19 +1222,19 @@ make serve-wrapper
 curl -X POST -H "Content-Type: application/json" \
      -H "Accept: application/json, text/event-stream" \
      -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test-client", "version": "1.0.0"}}}' \
-     http://localhost:9001/mcp/
+     http://localhost:9001/mcp
 
 # Send initialized notification (note: returns 202 for notifications)
 curl -X POST -H "Content-Type: application/json" \
      -H "Accept: application/json, text/event-stream" \
      -d '{"jsonrpc": "2.0", "method": "notifications/initialized"}' \
-     http://localhost:9001/mcp/
+     http://localhost:9001/mcp
 
 # List available tools via MCP wrapper
 curl -X POST -H "Content-Type: application/json" \
      -H "Accept: application/json, text/event-stream" \
      -d '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}' \
-     http://localhost:9001/mcp/
+     http://localhost:9001/mcp
 
 # Evaluate response via MCP wrapper
 curl -X POST -H "Content-Type: application/json" \
@@ -1149,8 +1253,11 @@ curl -X POST -H "Content-Type: application/json" \
          }
        }
      }' \
-     http://localhost:9001/mcp/
+     http://localhost:9001/mcp
 ```
+
+**🌐 Live Deployment Testing:**
+Replace `http://localhost:9001/mcp` with `https://6xaate4xrt.us-east-1.awsapprunner.com/mcp` in the above commands to test the live deployment!
 
 #### **Python REST API Client Integration**
 ```python
